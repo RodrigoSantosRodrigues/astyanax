@@ -160,9 +160,9 @@ def mount(file):
 		karyoplot(fn)
 
 def mountEdt():
-	fn = "data/metadados.txt"
+	fn = "data//metadados.txt"
 
-	directoryPath= fn
+	directoryPath= dir="data"
 	if not os.path.exists(directoryPath):
 		os.mkdir( directoryPath ) 
 
@@ -279,13 +279,13 @@ def mountIdeograma():
 
 
 def sobre():
-	messagebox.showinfo("About", "Software for mounting an ideogram \n Made with coffee during the dawn \n author: Rodrigo Junior santos \n Email:  rodrjuniorsantos@gmail.com \n (Version 1.0)")
+	messagebox.showinfo("About", "Software for mounting an ideogram \n Made with coffee during the dawn \n author: Rodrigo Junior santos \n Email:  rodrjuniorsantos@gmail.com \n (Version 1.0 - Beta)")
 
 
 #--------------------------------------------------------------------------------
 #Main GUI
 root = Tk()
-root.title("Ideogram")
+root.title("Astyanax,")
 #root.minsize(width=800, height=500)
 #root.maxsize(width=800, height=500)
 #root.setGeometry(50, 50, 1300, 650)
