@@ -17,7 +17,6 @@ from tkinter import *
 from tkinter import filedialog
 from tkinter import messagebox
 import os
-import pandas
 import matplotlib
 from matplotlib.patches import Circle, Wedge, Polygon, Rectangle
 from matplotlib.collections import PatchCollection, BrokenBarHCollection
@@ -466,9 +465,9 @@ if __name__ == '__main__':
 	root.title("Astyanax")
 	root.iconbitmap("icon.ico")
 
-	lado, cima = (root.winfo_screenwidth()), (root.winfo_screenheight())
+	side, top = (root.winfo_screenwidth()), (root.winfo_screenheight())
 
-	root.geometry('%dx%d+0+0' % (lado,cima))
+	root.geometry('%dx%d+0+0' % (side, top))
 
 	text = Text(root, width=500, height=500)
 	text.pack()
