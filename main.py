@@ -17,42 +17,91 @@ from tkinter import *
 from tkinter import filedialog
 from tkinter import messagebox
 import os
+import pandas
 import matplotlib
 from matplotlib.patches import Circle, Wedge, Polygon, Rectangle
-from matplotlib.collections import PatchCollection
+from matplotlib.collections import PatchCollection, BrokenBarHCollection
 from matplotlib      import pyplot       as plt
 
 
-#from karioplot import mount, mountEdt
+colors = {
+	        'gneg': (1., 1., 1.),
+	        'gpos25': (.6, .6, .6),
+	        'gpos50': (.4, .4, .4),
+	        'gpos75': (.2, .2, .2),
+	        'gpos100': (0., 0., 0.),
+	        'acen': (.8, .4, .4),
+	        'gvar': (.8, .8, .8),
+	        'stalk': (.9, .9, .9),
+	        'red'  : (217/255.0,47/255.0,39/255.0),
+	        'darkred': '#8b0000',
+	        'gray' : (200/255.0,200/255.0,200/255.0),
+	        'lightgray': '#d3d3d3',
+	        'white': '#ffffff',
+	        'whitesmoke': '#f5f5f5',
+	        'black':'#000000',
+	        'silver': '#c0c0c0',
+	        'light': '#d3d3d3',
+	        'blue': '#0000ff',
+	        'slateblue': '#6a5acd',
+	        'darkblue': '#00008b',
+	        'royalblue': '#4169e1',
+	        'mediumblue': '#0000cd',
+	        'deepskyblue': '#00bfff',
+	        'skyblue': '#87ceeb',
+	        'green': '#008000',
+	        'lime': '#00ff00',
+	        'darkgreen': '#006400',
+	        'orange': '#ffa500',
+	        'wheat': '#f5deb3',
+	        'gold': '#ffd700',
+	        'purple': '#800080',
+	        'mediumpurple': '#9370db',
+	        'darkorchid': '#9932cc',
+	        'pink': '#ffc0cb',
+	        'lightpink': '#ffb6c1',
+	        'teal': '#008080',
+	    }
+
+
+#--------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------
+#						IDEOGRAM
+#--------------------------------------------------------------------------------------------
 #--------------------------------------------------------------------------------------------
 
 def karyoplot(karyo_filename, metadata={}):
-	'''
-	To create a karyo_filename go to: http://genome.ucsc.edu/cgi-bin/hgTables 
-	group: Mapping and Sequencing
-	track: Chromosome Band 
-	An example of an output (hg19, Human) is here: http://pastebin.com/6nBX6sdE 
-	The script will plot dots next to loci defined in metadata as:
-	metadata = {
-		'1' : [2300000, 125000000, 249250621],
-	}
-	'''
-
 
 	karyo_dict={}
+	karyo_={}
 	with open(karyo_filename) as karyo_f:
 		lines = [x.replace(os.linesep, '').split() for x in karyo_f.readlines()]
 
-		for chromosome in [str(x) for x in range(1,25)]:
-			karyo_dict[chromosome] = [[y[0], int(y[1]), int(y[2]), y[3], y[4]] for y in [x for x in lines if x[0] == 'chr' + chromosome]]
+		chroms=[]
+		for line in lines:
+			chrom, start, stop, name, stain = line
+			chroms.append(chrom)
+		chroms.pop(0)
+		unique = set(chroms) 
+
+		for chromosome in [str(x) for x in range(1, len(unique)+1)]:
+			karyo_dict[chromosome] = [[y[0], float(y[1]), float(y[2]), y[3], y[4]] for y in [x for x in lines if x[0] == 'chr' + chromosome]]
 
 	fig, ax = plt.subplots(figsize=(15,15))
 
 	DIM = 1.0
 
-	#ax.set_xlim([0.0, DIM * (1.3)])
-	#ax.set_ylim([0.0, DIM])
+	def get_centromere(chromosome):
+		chromosome_end = float(max([x[2] for x in karyo_dict[chromosome]]))
+		for x in karyo_dict[chromosome]:
+			if x[3] == 'centromere':
+				start_= float(x[1])
+				end_  = float(x[2])
+		centromere_length_start= chromosome_end - start_
+		centromere_length_end= chromosome_end - end_
 
+		return centromere_length_start, centromere_length_end
+	
 	def get_chromosome_length(chromosome):
 		chromosome_start = float(min([x[1] for x in karyo_dict[chromosome]]))
 		chromosome_end = float(max(x[2] for x in karyo_dict[chromosome]))
@@ -65,27 +114,16 @@ def karyoplot(karyo_filename, metadata={}):
 		chromosome_length = get_chromosome_length(chromosome)
 		chromosome_length_1 = get_chromosome_length('1')
 
+		centromere_length, centromere_length_= get_centromere(chromosome)
+		centromere_length_1, centromere_length_1_= get_centromere('1')
+
 		x_start = order * DIM * 0.1 
 		x_end = x_start + (DIM * 0.04)
 		y_start = DIM * 0.8 * (chromosome_length/chromosome_length_1)
 		y_end = DIM * 0.1
 
-
-		# We use the same colors as: http://circos.ca/tutorials/lessons/2d_tracks/connectors/configuration 
-		colors = {
-			#'gpos100' : (0/255.0,0/255.0,0/255.0),
-			#'gpos'    : (0/255.0,0/255.0,0/255.0),
-			#'gpos75'  : (130/255.0,130/255.0,130/255.0),
-			#'gpos66'  : (160/255.0,160/255.0,160/255.0),
-			#'gpos50'  : (200/255.0,200/255.0,200/255.0),
-			#'gpos33'  : (210/255.0,210/255.0,210/255.0),
-			'cinza'  : (200/255.0,200/255.0,200/255.0),
-			#'gvar'    : (220/255.0,220/255.0,220/255.0),
-			#'gneg'    : (255/255.0,255/255.0,255/255.0),
-			'vermelho'    : (217/255.0,47/255.0,39/255.0),
-			#'stalk'   : (100/255.0,127/255.0,164/255.0),
-		}
-		
+		y_centromere_start=DIM * 0.62 * (centromere_length/centromere_length_1)
+		y_centromere_end=DIM * 0.62 * (centromere_length_/centromere_length_1_)
 
 		for index, piece in enumerate(karyo_dict[chromosome]):
 
@@ -95,9 +133,7 @@ def karyoplot(karyo_filename, metadata={}):
 				y_previous = y_start
 
 			y_next = y_previous + current_height_sc
-
 			color = colors[piece[4]]
-
 			#plot the caryotypes
 			r = Rectangle((x_start, y_previous), x_end-x_start, current_height_sc, color = color)
 			ax.add_patch(r)
@@ -107,12 +143,19 @@ def karyoplot(karyo_filename, metadata={}):
 		#Plot semicircles at the beginning and end of the chromosomes
 		center_x = x_start + (x_end-x_start)/2.0
 		radius = (x_end-x_start)/2.0
-		theta1 = 0.0
+		theta1 = 0
 		theta2 = 180.0
+
 		w1 = Wedge((center_x, y_start), radius, theta1, theta2, width=0.00001, facecolor='white', edgecolor='black')
 		w2 = Wedge((center_x, y_end), radius, theta2, theta1, width=0.00001, facecolor='white', edgecolor='black')
 		ax.add_patch(w1)
 		ax.add_patch(w2)
+
+		w1_ = Wedge((center_x, y_centromere_start), radius, theta2, theta1, width=0.01, facecolor='red', edgecolor='black')
+		w2_ = Wedge((center_x, y_centromere_start), radius, theta1, theta2, width=0.01, facecolor='red', edgecolor='black')
+		ax.add_patch(w1_)
+		ax.add_patch(w2_)
+
 		ax.plot([x_start, x_start], [y_start, y_end], ls='-', color='black')
 		ax.plot([x_end, x_end], [y_start, y_end], ls='-', color='black')
 
@@ -123,54 +166,152 @@ def karyoplot(karyo_filename, metadata={}):
 
 		ax.text(center_x, y_end - (DIM * 0.07), chromosome)
 
-	
-	plot_chromosome('1', 1)
-	plot_chromosome('2', 2)
-	plot_chromosome('3', 3)
-	plot_chromosome('4', 4)
-	plot_chromosome('5', 5)
-	plot_chromosome('6', 6)
-	plot_chromosome('7', 7)
-	plot_chromosome('8', 8)
-	plot_chromosome('9', 9)
-	plot_chromosome('10', 10)
-	plot_chromosome('11', 11)
-	plot_chromosome('12', 12)
-	
-	plot_chromosome('13', 13)
-	plot_chromosome('14', 14)
-	plot_chromosome('15', 15)
-	plot_chromosome('16', 16)
-	plot_chromosome('17', 17)
-	plot_chromosome('18', 18)
-	plot_chromosome('19', 19)
-	plot_chromosome('20', 20)
-	plot_chromosome('21', 21)
-	plot_chromosome('22', 22)
-	plot_chromosome('23', 23)
-	plot_chromosome('24', 24)
-		
+
+	for i in range(1, len(unique)+1):
+		plot_chromosome(str(i), i)
+
+	plt.title('Ideogram')
 	plt.axis('off')
-	plt.show()
+	plt.show(block = False)
 
-#main
+#--------------------------
 def mount(file):
+	try:
+		karyoplot(file)
+	except:
+		messagebox.showerror(title ="Error reading file", message="The file should be in the correct format for cytogenomic, read the tutorial.")
+	
 
-		fn = file
-		karyoplot(fn)
 
 def mountEdt():
-	fn = "data//metadados.txt"
+	fn = "data//function1.txt"
 
-	directoryPath= dir="data"
+	directoryPath= "data"
 	if not os.path.exists(directoryPath):
 		os.mkdir( directoryPath ) 
 
 	if not os.path.exists(fn):
 		messagebox.showerror(title ="Message", message="Error reading text")
 
-	karyoplot(fn)
+	try:
+		karyoplot(fn)
+	except:
+		messagebox.showerror(title ="Error reading file", message="The file should be in the correct format for cytogenomic, read the tutorial.")
+	
 
+#--------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------
+#						CHROMOSOMES DETAILS
+#--------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------
+
+
+def details(file):
+	
+	height = 0.9
+	spacing = 0.9
+
+	def ideograms(fn):
+	    last_chrom = None
+	    last_specie= None
+	    last_population= None
+	    fin = open(fn)
+	    fin.readline()
+	    xranges, color = [], []
+	    ymin = 0
+
+	    for line in fin:
+	        chrom, start, stop, specie, population, stain = line.strip().split()
+	        start = int(start)
+	        stop = int(stop)
+	        width = stop - start
+	        if chrom == last_chrom or (last_chrom is None):
+	            xranges.append((start, width))
+	            color.append(colors[stain])
+	            last_chrom = chrom
+	            last_specie= specie
+	            last_population= population
+	            continue
+
+	        ymin += height + spacing
+	        yrange = (ymin, height)
+	        yield xranges, yrange, color, last_chrom, last_specie, last_population
+	        xranges, color = [], []
+	        xranges.append((start, width))
+	        color.append(colors[stain])
+	        last_chrom = chrom
+	        last_specie= specie
+	        last_population= population
+
+	    # last one
+	    ymin += height + spacing
+	    yrange = (ymin, height)
+	    yield xranges, yrange, color, last_chrom, last_specie, last_population
+
+	fig = plt.figure(figsize=(15,15))
+	ax = fig.add_subplot(111)
+	d = {}
+	yticks = []
+	yticklabels = []
+
+	for xranges, yrange, color, chms, species, populations in ideograms(file):
+	    coll = BrokenBarHCollection(xranges, yrange, facecolors=color)
+	    ax.add_collection(coll)
+	    center = yrange[0] + yrange[1]/2.
+	    yticks.append(center)
+	    label= '%s %s'%(species, populations)
+	    yticklabels.append(label)
+	    d[chms] = xranges
+	    values=[]
+	    bp=[]
+	    for inter in xranges:
+	        values.append(inter[0])
+	        bp.append(inter[1])
+	    values.append(bp[-1]+values[-1])
+
+	    for i in range(0, len(values)-1):
+	        xlabel= '%d bp'%(bp[i])
+	        ax.annotate(xlabel, xy=(values[i+1]/2 + values[i]/2, yrange[0] + yrange[1]), xytext=(values[i+1]/2 + values[i]/2, yrange[0] + yrange[1]))
+
+	ax.set_title('Chromosomes')
+	ax.axis('tight')
+	ax.set_yticks(yticks)
+	ax.set_yticklabels(yticklabels)
+	ax.set_xticks([])
+	plt.show(block = False)
+
+
+#--------------------------
+def mount_details(file):
+	try:
+		details(file)
+	except:
+		messagebox.showerror(title ="Error reading file", message="The file should be in the correct format for cytogenetics, read the tutorial.")
+	
+
+
+def mountEdt_details():
+	fn = "data//function3.txt"
+
+	directoryPath= "data"
+	if not os.path.exists(directoryPath):
+		os.mkdir( directoryPath ) 
+
+	if not os.path.exists(fn):
+		messagebox.showerror(title ="Message", message="Error reading text")
+
+	try:
+		details(fn)
+	except:
+		messagebox.showerror(title ="Error reading file", message="The file should be in the correct format for cytogenetics, read the tutorial.")
+	
+
+
+
+#--------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------
+#						MENUS FUNCTIONS
+#--------------------------------------------------------------------------------------------
 #--------------------------------------------------------------------------------------------
 
 #Fonts
@@ -252,10 +393,16 @@ def openFile():
 	text.delete(0.0, END)
 	text.insert(0.0, t)
 
-#-----------------------------  Montar  ----------------------------------------
+
+def quit():
+	sys.exit()
+
+
+
+
 def mountEditor():
 
-	arquivo = open("data/metadados.txt", 'w+')
+	arquivo = open("data/function1.txt", 'w+')
 	t = text.get(0.0, END)
 
 	if text.compare("end-1c", "==", "1.0"):
@@ -272,63 +419,101 @@ def mountEditor():
 		mountEdt()
 
 
-
-def mountIdeograma():
+def mountFile():
 	f = filedialog.askopenfilename(parent=root)
 	mount(f)
 
 
-def sobre():
+def mountEdtDetails():
+
+	arquivo = open("data/function3.txt", 'w+')
+	t = text.get(0.0, END)
+
+	if text.compare("end-1c", "==", "1.0"):
+		messagebox.showerror("Erro", "Empty text area, enter metadata, please!")
+	
+	else:
+		try:
+			arquivo.write(t.rstrip())
+		except:
+			messagebox.showerror(title ="Message", message="Error reading text")
+
+		arquivo.close()
+
+		mountEdt_details()
+
+
+def mountFileDetails():
+	f = filedialog.askopenfilename(parent=root)
+	mount_details(f)
+
+
+def about():
 	messagebox.showinfo("About", "Software for mounting an ideogram \n Made with coffee during the dawn \n author: Rodrigo Junior santos \n Email:  rodrjuniorsantos@gmail.com \n (Version 1.0 - Beta)")
 
 
-#--------------------------------------------------------------------------------
-#Main GUI
-root = Tk()
-root.title("Astyanax,")
-#root.minsize(width=800, height=500)
-#root.maxsize(width=800, height=500)
-#root.setGeometry(50, 50, 1300, 650)
-#root.geometry("850x450+250+250")
-
-lado, cima = (root.winfo_screenwidth()), (root.winfo_screenheight())
-
-root.geometry('%dx%d+0+0' % (lado,cima))
-
-text = Text(root, width=500, height=500)
-text.pack()
 
 
-menubar = Menu(root)
-filemenu = Menu(menubar)
-filemenu.add_command(label="New", command=newFile, accelerator="Ctrl+N")
-filemenu.add_command(label="Open", command=openFile, accelerator="Ctrl+O")
-filemenu.add_command(label="Save", command=saveFile, accelerator="Ctrl+S")
-filemenu.add_command(label="Save as...", command=saveAs, accelerator="Ctrl+A")
-filemenu.add_separator()
-filemenu.add_command(label="Quit", command=root.quit, accelerator="Ctrl+Q")
-menubar.add_cascade(label="File", menu=filemenu)
+#--------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------
+#						MAIN
+#--------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------
 
-#####Hot-Keys#######################
-root.bind("<Control-n>", newFileHK)
-root.bind("<Control-o>", openFileHK)
-root.bind("<Control-s>", saveFileHK)
-root.bind("<Control-a>", saveAsHK)
-root.bind("<Control-q>", quit)
-formatOptions = Menu(menubar)
-formatOptions.add_command(label="Arial", command=fontArial)
-formatOptions.add_command(label="Helvetica", command=fontHelvetica)
-formatOptions.add_command(label="Times New Roman", command=fontTNR)
-formatOptions.add_command(label="Gothic", command=fontGothic)
-menubar.add_cascade(label="Font", menu=formatOptions)
+if __name__ == '__main__':
+	#Main GUI
+	root = Tk()
+	root.title("Astyanax")
+	root.iconbitmap("icon.ico")
 
-formatOptions = Menu(menubar)
-formatOptions.add_command(label="Mount file editor text", command=mountEditor)
-formatOptions.add_command(label="Mount by external file", command=mountIdeograma)
-menubar.add_cascade(label="Build Ideogram", menu=formatOptions)
+	lado, cima = (root.winfo_screenwidth()), (root.winfo_screenheight())
 
-filemenu = Menu(menubar)
-menubar.add_cascade(label="About", command=sobre)
+	root.geometry('%dx%d+0+0' % (lado,cima))
 
-root.config(menu=menubar)
-root.mainloop()
+	text = Text(root, width=500, height=500)
+	text.pack()
+
+
+	menubar = Menu(root)
+	filemenu = Menu(menubar)
+	filemenu.add_command(label="New", command=newFile, accelerator="Ctrl+N")
+	filemenu.add_command(label="Open", command=openFile, accelerator="Ctrl+O")
+	filemenu.add_command(label="Save", command=saveFile, accelerator="Ctrl+S")
+	filemenu.add_command(label="Save as...", command=saveAs, accelerator="Ctrl+A")
+	filemenu.add_separator()
+	filemenu.add_command(label="Quit", command=quit, accelerator="Ctrl+Q")
+	menubar.add_cascade(label="File", menu=filemenu)
+
+	#####Hot-Keys#######################
+	root.bind("<Control-n>", newFileHK)
+	root.bind("<Control-o>", openFileHK)
+	root.bind("<Control-s>", saveFileHK)
+	root.bind("<Control-a>", saveAsHK)
+	root.bind("<Control-q>", quit)
+	formatOptions = Menu(menubar)
+	formatOptions.add_command(label="Arial", command=fontArial)
+	formatOptions.add_command(label="Helvetica", command=fontHelvetica)
+	formatOptions.add_command(label="Times New Roman", command=fontTNR)
+	formatOptions.add_command(label="Gothic", command=fontGothic)
+	menubar.add_cascade(label="Font", menu=formatOptions)
+
+	formatOptions = Menu(menubar)
+	formatOptions.add_command(label="Mount ideogram by text editor", command=mountEditor)
+	formatOptions.add_command(label="Mount by external file", command=mountFile)
+	menubar.add_cascade(label="Cytogenomics", menu=formatOptions)
+
+	formatOptions = Menu(menubar)
+	formatOptions.add_command(label="Mount by text editor", command=mountEditor)
+	formatOptions.add_command(label="Mount by external file", command=mountFile)
+	menubar.add_cascade(label="Cytogenetics", menu=formatOptions)
+
+	formatOptions = Menu(menubar)
+	formatOptions.add_command(label="Mount by text editor", command=mountEdtDetails)
+	formatOptions.add_command(label="Mount by external file", command=mountFileDetails)
+	menubar.add_cascade(label="Details", menu=formatOptions)
+
+	filemenu = Menu(menubar)
+	menubar.add_cascade(label="About", command=about)
+
+	root.config(menu=menubar)
+	root.mainloop()
